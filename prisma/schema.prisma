@@ -1,0 +1,32 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Profile {
+  id                   String   @id @default(uuid())
+  userId               String   @unique
+  email                String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  subscription Subscription?
+}
+
+model Subscription {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  planType    String
+  active      Boolean  @default(true)
+  expiresAt   DateTime
+  reference   String
+  provider    String   // "paystack"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  profile Profile @relation(fields: [userId], references: [userId])
+}
