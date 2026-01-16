@@ -3,6 +3,7 @@ import express from "express";
 import setupRoutes from "./middleware/routing.ts";
 import cors from "cors";
 import bodyParser from "body-parser";
+import { seedDatabase } from "./temp/prepopulate";
 
 const PORT = 4000;
 
@@ -30,8 +31,15 @@ app.get("/", (req, res) => {
 
 setupRoutes(app);
 
+// async function main() {
+//   console.log("Calling seed...");
+//   await seedDatabase();
+//   console.log("Done.");
+// }
+
+// main().catch((err) => console.error(err));
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log("Server running on port", PORT);
   console.log("Environment", process.env.NODE_ENV);
-
 });

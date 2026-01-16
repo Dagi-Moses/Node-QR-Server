@@ -7,26 +7,115 @@ datasource db {
   provider = "postgresql"
 }
 
+enum ProjectStatus {
+  active
+  archived
+  draft
+}
+
+enum QRStatus {
+  active
+  disabled
+}
+
+enum QRType {
+  url
+}
+
 model Profile {
-  id                   String   @id @default(uuid())
-  userId               String   @unique
-  email                String
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  email     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   subscription Subscription?
+  projects     Project[]
 }
 
 model Subscription {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  planType    String
-  active      Boolean  @default(true)
-  expiresAt   DateTime
-  reference   String
-  provider    String   // "paystack"
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  planType  String
+  active    Boolean   @default(true)
+  expiresAt DateTime?
+  reference String
+  provider  String
+
+  providerSubscriptionId String?
+  providerCustomerId     String?
+  providerAuthCode       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   profile Profile @relation(fields: [userId], references: [userId])
 }
+
+model Project {
+  id     String @id @default(cuid())
+  userId String
+
+  name        String
+  description String?
+  status      ProjectStatus @default(active)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  qrs     QRCode[]
+  profile Profile  @relation(fields: [userId], references: [userId])
+
+  @@index([userId])
+}
+
+model QRCode {
+  id        String   @id @default(cuid())
+  projectId String
+  type      QRType
+  name      String?
+  payload   Json
+  status    QRStatus @default(active)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  qrScans QRScan[]
+
+  @@index([projectId])
+}
+
+model QRScan {
+  id        String   @id @default(cuid())
+  qrId      String
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  qr QRCode @relation(fields: [qrId], references: [id], onDelete: Cascade)
+
+  @@index([qrId, createdAt])
+}
+
+// model QRScan {
+//   id             String   @id @default(cuid())
+//   qrId           String
+//   ip             String?       // public IP, for coarse geo lookup
+//   country        String?       // derived from IP
+//   city           String?       // optional, coarse
+//   userAgent      String?       // raw UA string
+//   deviceType     String?       // desktop | mobile | tablet
+//   browser        String?       // Chrome, Safari, etc.
+//   referrer       String?       // HTTP referer header
+//   utmSource      String?       // optional marketing analytics
+//   utmMedium      String?
+//   utmCampaign    String?
+//   isBot          Boolean?      // optional, detect bots
+//   createdAt      DateTime @default(now())
+
+//   qr QRCode @relation(fields: [qrId], references: [id])
+
+//   @@index([qrId, createdAt])
+//   @@index([country])
+//   @@index([deviceType])
+// }

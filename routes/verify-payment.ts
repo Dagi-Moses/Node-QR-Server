@@ -28,6 +28,9 @@ router.post("/", async (req, res) => {
 
     // 🔑 Extract metadata you sent during init
     const { userId, planType } = data.metadata;
+    const providerSubscriptionId = data.id || null;
+    const providerCustomerId = data.customer?.id || null;
+    const providerAuthCode = data.authorization?.authorization_code || null;
 
     if (!userId || !planType) {
       return res.status(400).json({ error: "Missing metadata" });
@@ -37,11 +40,20 @@ router.post("/", async (req, res) => {
     const now = new Date();
     let expiresAt = new Date(now);
 
-    if (planType === "week") expiresAt.setDate(now.getDate() + 7);
-    if (planType === "month") expiresAt.setMonth(now.getMonth() + 1);
-    if (planType === "year") expiresAt.setFullYear(now.getFullYear() + 1);
+    switch (planType) {
+      case "week":
+        expiresAt.setDate(now.getDate() + 7);
+        break;
+      case "month":
+        expiresAt.setMonth(now.getMonth() + 1);
+        break;
+      case "year":
+        expiresAt.setFullYear(now.getFullYear() + 1);
+        break;
+    }
 
     // ✅ Update DB
+
     await prisma.subscription.upsert({
       where: { userId },
       update: {
@@ -49,6 +61,9 @@ router.post("/", async (req, res) => {
         planType,
         expiresAt,
         reference,
+        providerSubscriptionId,
+        providerCustomerId,
+        providerAuthCode,
       },
       create: {
         userId,
@@ -57,6 +72,9 @@ router.post("/", async (req, res) => {
         expiresAt,
         reference,
         provider: "paystack",
+        providerSubscriptionId,
+        providerCustomerId,
+        providerAuthCode,
         profile: {
           connect: {
             userId: userId,
@@ -72,42 +90,4 @@ router.post("/", async (req, res) => {
   }
 });
 
-
 export default router;
-
-
-// import axios from "axios";
-// import express from "express";
-
-// const router = express.Router();
-
-// router.post("/", async (req, res) => {
-//   console.log(" Verify Payment called");
-//   const { reference } = req.body;
-
-//   console.log("Reference recieved ", reference);
-
-//   const response = await axios.get(
-//     `https://api.paystack.co/transaction/verify/${reference}`,
-//     {
-//       headers: {
-//         Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-//       },
-//     }
-//   );
-
-//   console.log("Response ", response);
-
-//   const data = response.data.data;
-
-//   console.log("Data ", data);
-
-//   if (data.status === "success") {
-//     // activate subscription here
-//     return res.json({ success: true });
-//   }
-
-//   return res.status(400).json({ success: false });
-// });
-
-// export default router;

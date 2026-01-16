@@ -9,11 +9,10 @@ router.get(
   ClerkExpressRequireAuth() as any,
 
   async (req: any, res: any) => {
-    console.log("fetching subscription");
     try {
       // however you attach auth (Clerk, JWT, session)
       const userId = req.auth?.userId || req.user?.id;
-      console.log("User ID ", userId);
+
       if (!userId) {
         console.error("Unauthorized");
         return res.status(401).json({ error: "Unauthorized" });

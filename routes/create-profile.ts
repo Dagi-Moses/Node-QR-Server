@@ -36,6 +36,7 @@ router.post(
       }
 
       await prisma.profile.create({
+        
         data: {
           userId: clerkUserId,
           email,
