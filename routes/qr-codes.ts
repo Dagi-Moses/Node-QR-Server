@@ -25,7 +25,7 @@ router.get(
     const response = qrs;
 
     res.json(response);
-  }
+  },
 );
 
 // Get QR details (owner only)
@@ -36,18 +36,23 @@ router.get(
     const { projectId, qrId } = req.params;
     const userId = req.auth.userId;
 
-    const qr = await prisma.qRCode.findFirst({
-      where: {
-        id: qrId,
-        projectId,
-        project: { userId },
-      },
-    });
+    try {
+      const qr = await prisma.qRCode.findFirst({
+        where: {
+          id: qrId,
+          projectId,
+          project: { userId },
+        },
+      });
 
-    if (!qr) return res.status(404).json({ message: "QR not found" });
+      if (!qr) return res.status(404).json({ message: "QR not found" });
 
-    res.json(qr);
-  }
+      res.json(qr);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Failed to Fetch QR", error });
+    }
+  },
 );
 
 // Update QR (owner only)
@@ -77,7 +82,7 @@ router.put(
       console.error(err);
       res.status(500).json({ message: "Failed to update QR" });
     }
-  }
+  },
 );
 
 // Delete QR (owner only)
@@ -105,7 +110,7 @@ router.delete(
       console.error(err);
       res.status(500).json({ message: "Failed to delete QR" });
     }
-  }
+  },
 );
 
 export default router;

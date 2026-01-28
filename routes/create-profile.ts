@@ -36,7 +36,6 @@ router.post(
       }
 
       await prisma.profile.create({
-        
         data: {
           userId: clerkUserId,
           email,
@@ -50,7 +49,7 @@ router.post(
       console.error("STEP 11 ❌ Error caught:", err);
       return res.status(500).json({ error: "Internal server error" });
     }
-  }
+  },
 );
 
 export default router;

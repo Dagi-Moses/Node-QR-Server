@@ -86,36 +86,31 @@ model QRCode {
 }
 
 model QRScan {
-  id        String   @id @default(cuid())
+  id        String @id @default(cuid())
   qrId      String
+  projectId String
+
+  visitorId String? // unique scan tracking
   ip        String?
   userAgent String?
+
+  country     String?
+  countryCode String?
+  city        String?
+
+  device   String?
+  os       String?
+  browser  String?
+  referrer String?
+
   createdAt DateTime @default(now())
 
   qr QRCode @relation(fields: [qrId], references: [id], onDelete: Cascade)
 
   @@index([qrId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([visitorId])
+  @@index([country])
+  @@index([os])
+  @@index([device])
 }
-
-// model QRScan {
-//   id             String   @id @default(cuid())
-//   qrId           String
-//   ip             String?       // public IP, for coarse geo lookup
-//   country        String?       // derived from IP
-//   city           String?       // optional, coarse
-//   userAgent      String?       // raw UA string
-//   deviceType     String?       // desktop | mobile | tablet
-//   browser        String?       // Chrome, Safari, etc.
-//   referrer       String?       // HTTP referer header
-//   utmSource      String?       // optional marketing analytics
-//   utmMedium      String?
-//   utmCampaign    String?
-//   isBot          Boolean?      // optional, detect bots
-//   createdAt      DateTime @default(now())
-
-//   qr QRCode @relation(fields: [qrId], references: [id])
-
-//   @@index([qrId, createdAt])
-//   @@index([country])
-//   @@index([deviceType])
-// }

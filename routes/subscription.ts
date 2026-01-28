@@ -11,7 +11,7 @@ router.get(
   async (req: any, res: any) => {
     try {
       // however you attach auth (Clerk, JWT, session)
-      const userId = req.auth?.userId || req.user?.id;
+      const userId = req.auth?.userId;
 
       if (!userId) {
         console.error("Unauthorized");
@@ -41,7 +41,7 @@ router.get(
       console.error("Fetch subscription error:", err);
       return res.status(500).json({ error: "Internal server error" });
     }
-  }
+  },
 );
 
 export default router;

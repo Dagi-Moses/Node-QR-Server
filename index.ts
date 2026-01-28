@@ -22,7 +22,7 @@ app.use(
     origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 
 app.get("/", (req, res) => {
@@ -31,13 +31,14 @@ app.get("/", (req, res) => {
 
 setupRoutes(app);
 
-// async function main() {
-//   console.log("Calling seed...");
-//   await seedDatabase();
-//   console.log("Done.");
-// }
+async function main() {
+  console.log("Calling seed...");
+  await seedDatabase();
+  console.log("Done.");
+}
+app.set("trust proxy", true);
 
-// main().catch((err) => console.error(err));
+//main().catch((err) => console.error(err));
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log("Server running on port", PORT);
