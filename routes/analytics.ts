@@ -33,6 +33,10 @@ router.get(
       // ================= STATS =================
 
       const totalScans = await prisma.qRScan.count({ where: scanWhere });
+      const totalCodes = await prisma.qRCode.count({
+        where: { project: { userId } },
+      });
+
       const prevTotalScans = await prisma.qRScan.count({
         where: prevScanWhere,
       });
@@ -150,12 +154,102 @@ router.get(
         };
       });
 
+      const scansData = await prisma.qRScan.groupBy({
+        by: ["createdAt"],
+        where: scanWhere,
+        _count: {
+          id: true,
+          visitorId: true,
+        },
+      });
+
+      const currentYear = new Date().getFullYear();
+
+      const scansByMonth = Array.from({ length: 12 }, (_, i) => {
+        const monthIndex = i;
+        const monthName = new Date(0, i).toLocaleString("en", {
+          month: "short",
+        });
+
+        const monthScans = scansData.filter((s) => {
+          const d = new Date(s.createdAt);
+          return d.getMonth() === monthIndex && d.getFullYear() === currentYear;
+        });
+
+        return {
+          month: monthName,
+          total: monthScans.reduce((a, b) => a + b._count.id, 0),
+          unique: monthScans.reduce((a, b) => a + (b._count.visitorId ?? 0), 0),
+        };
+      });
+
+      const locationsRaw = await prisma.qRScan.groupBy({
+        by: ["city"], // assuming you have `city` field in your QRScan or visitor
+        where: scanWhere,
+        _count: { id: true },
+        orderBy: { _count: { id: "desc" } },
+        take: 5,
+      });
+
+      const totalScansCount = await prisma.qRScan.count({ where: scanWhere });
+
+      const locations = locationsRaw.map((l) => ({
+        city: l.city,
+        percent: Math.round((l._count.id / totalScansCount) * 100),
+      }));
+
+      const osRaw = await prisma.qRScan.groupBy({
+        by: ["os"], // assuming `os` is stored in each scan
+        where: scanWhere,
+        _count: { id: true },
+        orderBy: { _count: { id: "desc" } },
+      });
+
+      const osData = osRaw.map((o) => ({
+        name: o.os,
+        value: o._count.id,
+      }));
+
+      const devicesRaw = await prisma.qRScan.groupBy({
+  by: ["device"], // e.g., "mobile", "desktop", "tablet"
+  where: scanWhere,
+  _count: { id: true },
+});
+
+const totalDeviceScans = devicesRaw.reduce((a, b) => a + b._count.id, 0);
+
+const topDevices = devicesRaw.map((d) => ({
+  key: (d.device ?? "unknown").toLowerCase(),
+  label: (d.device ?? "unknown").charAt(0).toUpperCase() + (d.device ?? "unknown").slice(1),
+  percentage: Math.round((d._count.id / totalDeviceScans) * 100),
+}));
+const browsersRaw = await prisma.qRScan.groupBy({
+  by: ["browser"], // e.g., "chrome", "safari", etc.
+  where: scanWhere,
+  _count: { id: true },
+});
+
+const totalBrowserScans = browsersRaw.reduce((a, b) => a + b._count.id, 0);
+
+const topBrowsers = browsersRaw.map((b) => ({
+  key: (b.browser ?? "unknown").toLowerCase(),
+  label: (b.browser ?? "unknown").charAt(0).toUpperCase() + (b.browser ?? "unknown").slice(1),
+  percentage: Math.round((b._count.id / totalBrowserScans) * 100),
+}));
+
+
       // ================= RESPONSE =================
 
       res.json({
         stats,
         topQrs,
         topProjects,
+        totalCodes,
+        scansData: scansByMonth,
+        locations,
+        osData,
+        topDevices,
+        topBrowsers
       });
     } catch (err) {
       console.error("Analytics fetch error:", err);
