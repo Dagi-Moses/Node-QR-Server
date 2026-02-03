@@ -211,32 +211,38 @@ router.get(
       }));
 
       const devicesRaw = await prisma.qRScan.groupBy({
-  by: ["device"], // e.g., "mobile", "desktop", "tablet"
-  where: scanWhere,
-  _count: { id: true },
-});
+        by: ["device"], // e.g., "mobile", "desktop", "tablet"
+        where: scanWhere,
+        _count: { id: true },
+      });
 
-const totalDeviceScans = devicesRaw.reduce((a, b) => a + b._count.id, 0);
+      const totalDeviceScans = devicesRaw.reduce((a, b) => a + b._count.id, 0);
 
-const topDevices = devicesRaw.map((d) => ({
-  key: (d.device ?? "unknown").toLowerCase(),
-  label: (d.device ?? "unknown").charAt(0).toUpperCase() + (d.device ?? "unknown").slice(1),
-  percentage: Math.round((d._count.id / totalDeviceScans) * 100),
-}));
-const browsersRaw = await prisma.qRScan.groupBy({
-  by: ["browser"], // e.g., "chrome", "safari", etc.
-  where: scanWhere,
-  _count: { id: true },
-});
+      const topDevices = devicesRaw.map((d) => ({
+        key: (d.device ?? "unknown").toLowerCase(),
+        label:
+          (d.device ?? "unknown").charAt(0).toUpperCase() +
+          (d.device ?? "unknown").slice(1),
+        percentage: Math.round((d._count.id / totalDeviceScans) * 100),
+      }));
+      const browsersRaw = await prisma.qRScan.groupBy({
+        by: ["browser"], // e.g., "chrome", "safari", etc.
+        where: scanWhere,
+        _count: { id: true },
+      });
 
-const totalBrowserScans = browsersRaw.reduce((a, b) => a + b._count.id, 0);
+      const totalBrowserScans = browsersRaw.reduce(
+        (a, b) => a + b._count.id,
+        0,
+      );
 
-const topBrowsers = browsersRaw.map((b) => ({
-  key: (b.browser ?? "unknown").toLowerCase(),
-  label: (b.browser ?? "unknown").charAt(0).toUpperCase() + (b.browser ?? "unknown").slice(1),
-  percentage: Math.round((b._count.id / totalBrowserScans) * 100),
-}));
-
+      const topBrowsers = browsersRaw.map((b) => ({
+        key: (b.browser ?? "unknown").toLowerCase(),
+        label:
+          (b.browser ?? "unknown").charAt(0).toUpperCase() +
+          (b.browser ?? "unknown").slice(1),
+        percentage: Math.round((b._count.id / totalBrowserScans) * 100),
+      }));
 
       // ================= RESPONSE =================
 
@@ -249,7 +255,205 @@ const topBrowsers = browsersRaw.map((b) => ({
         locations,
         osData,
         topDevices,
-        topBrowsers
+        topBrowsers,
+      });
+    } catch (err) {
+      console.error("Analytics fetch error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  },
+);
+
+router.get(
+  "/api/analytics/qr/:qrId",
+  ClerkExpressRequireAuth() as any,
+  async (req: any, res: any) => {
+    try {
+      const userId = req.auth.userId;
+
+      const { qrId } = req.params;
+      const { range = "all", from, to } = req.query;
+
+      const qr = await prisma.qRCode.findFirst({
+        where: {
+          id: qrId,
+          project: { userId },
+        },
+      });
+
+      if (!qr) {
+        return res.status(404).json({ message: "QR not found" });
+      }
+
+      const dateFilter = resolveDateRange(range, from, to);
+      const prevDateFilter = resolvePreviousRange(range, from, to);
+
+      const scanWhere = {
+        qrId,
+        ...(dateFilter && { createdAt: dateFilter }),
+      };
+
+      const prevScanWhere = {
+        qrId,
+        ...(prevDateFilter && { createdAt: prevDateFilter }),
+      };
+
+      // ================= STATS =================
+
+      const totalScans = await prisma.qRScan.count({ where: scanWhere });
+
+      const prevTotalScans = await prisma.qRScan.count({
+        where: prevScanWhere,
+      });
+
+      const uniqueVisitors = await prisma.qRScan
+        .findMany({
+          where: { ...scanWhere, visitorId: { not: null } },
+          distinct: ["visitorId"],
+          select: { visitorId: true },
+        })
+        .then((results) => results.length);
+
+      const prevUniqueVisitors = await prisma.qRScan
+        .findMany({
+          where: { ...prevScanWhere, visitorId: { not: null } },
+          distinct: ["visitorId"],
+          select: { visitorId: true },
+        })
+        .then((results) => results.length);
+
+      const activeQrs = await prisma.qRCode.count({
+        where: { status: "active", project: { userId } },
+      });
+      const prevActiveQrs = await prisma.qRCode.count({
+        where: { status: "active", project: { userId } },
+      });
+
+      const repeatRate =
+        totalScans > 0 ? (totalScans - uniqueVisitors) / totalScans : 0;
+
+      const prevRepeatRate =
+        prevTotalScans > 0
+          ? (prevTotalScans - prevUniqueVisitors) / prevTotalScans
+          : 0;
+      // Build frontend-ready stats array
+      const stats = [
+        {
+          label: "Total Scans",
+          value: totalScans,
+          change: percentChange(prevTotalScans, totalScans),
+        },
+        {
+          label: "Unique Visitors",
+          value: uniqueVisitors,
+          change: percentChange(prevUniqueVisitors, uniqueVisitors),
+        },
+        {
+          label: "Repeat scan rate",
+          value: Number((repeatRate * 100).toFixed(1)),
+          change: percentChange(prevRepeatRate, repeatRate),
+        },
+      ];
+
+      const scansData = await prisma.qRScan.groupBy({
+        by: ["createdAt"],
+        where: scanWhere,
+        _count: {
+          id: true,
+          visitorId: true,
+        },
+      });
+
+      const currentYear = new Date().getFullYear();
+
+      const scansByMonth = Array.from({ length: 12 }, (_, i) => {
+        const monthIndex = i;
+        const monthName = new Date(0, i).toLocaleString("en", {
+          month: "short",
+        });
+
+        const monthScans = scansData.filter((s) => {
+          const d = new Date(s.createdAt);
+          return d.getMonth() === monthIndex && d.getFullYear() === currentYear;
+        });
+
+        return {
+          month: monthName,
+          total: monthScans.reduce((a, b) => a + b._count.id, 0),
+          unique: monthScans.reduce((a, b) => a + (b._count.visitorId ?? 0), 0),
+        };
+      });
+
+      const locationsRaw = await prisma.qRScan.groupBy({
+        by: ["city"], // assuming you have `city` field in your QRScan or visitor
+        where: scanWhere,
+        _count: { id: true },
+        orderBy: { _count: { id: "desc" } },
+        take: 5,
+      });
+
+      const totalScansCount = await prisma.qRScan.count({ where: scanWhere });
+
+      const locations = locationsRaw.map((l) => ({
+        city: l.city,
+        percent: Math.round((l._count.id / totalScansCount) * 100),
+      }));
+
+      const osRaw = await prisma.qRScan.groupBy({
+        by: ["os"], // assuming `os` is stored in each scan
+        where: scanWhere,
+        _count: { id: true },
+        orderBy: { _count: { id: "desc" } },
+      });
+
+      const osData = osRaw.map((o) => ({
+        name: o.os,
+        value: o._count.id,
+      }));
+
+      const devicesRaw = await prisma.qRScan.groupBy({
+        by: ["device"], // e.g., "mobile", "desktop", "tablet"
+        where: scanWhere,
+        _count: { id: true },
+      });
+
+      const totalDeviceScans = devicesRaw.reduce((a, b) => a + b._count.id, 0);
+
+      const topDevices = devicesRaw.map((d) => ({
+        key: (d.device ?? "unknown").toLowerCase(),
+        label:
+          (d.device ?? "unknown").charAt(0).toUpperCase() +
+          (d.device ?? "unknown").slice(1),
+        percentage: Math.round((d._count.id / totalDeviceScans) * 100),
+      }));
+      const browsersRaw = await prisma.qRScan.groupBy({
+        by: ["browser"], // e.g., "chrome", "safari", etc.
+        where: scanWhere,
+        _count: { id: true },
+      });
+
+      const totalBrowserScans = browsersRaw.reduce(
+        (a, b) => a + b._count.id,
+        0,
+      );
+
+      const topBrowsers = browsersRaw.map((b) => ({
+        key: (b.browser ?? "unknown").toLowerCase(),
+        label:
+          (b.browser ?? "unknown").charAt(0).toUpperCase() +
+          (b.browser ?? "unknown").slice(1),
+        percentage: Math.round((b._count.id / totalBrowserScans) * 100),
+      }));
+
+      // ================= RESPONSE =================
+
+      res.json({
+        stats,
+        scansData: scansByMonth,
+        locations,
+        osData,
+        topDevices,
+        topBrowsers,
       });
     } catch (err) {
       console.error("Analytics fetch error:", err);

@@ -10,6 +10,7 @@ import publicFDQrRouter from "../routes/public-qrs/qr(api).js";
 import publicScanQrRouter from "../routes/public-qrs/q(scan).js";
 
 import analyticsRouter from "../routes/analytics.js";
+import contactRouter from "../routes/contact.js";
 
 export default function setupRoutes(app: any): void {
   app.use("/api/create-profile", createProfileRouter);
@@ -20,6 +21,7 @@ export default function setupRoutes(app: any): void {
   app.use("/payments/verify", verifyPaymentRouter);
   app.use("/api", qrCodeRouter);
   app.use("/", analyticsRouter);
+  app.use("/", contactRouter);
 
   app.use("/", publicFDQrRouter);
   app.use("/", publicScanQrRouter);

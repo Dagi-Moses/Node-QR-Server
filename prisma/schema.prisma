@@ -18,8 +18,20 @@ enum QRStatus {
   disabled
 }
 
+enum SubscriptionStatus {
+  active
+  pending
+  disabled
+}
+
 enum QRType {
   url
+}
+
+enum SubscriptionType {
+  week
+  month
+  year
 }
 
 model Profile {
@@ -34,10 +46,11 @@ model Profile {
 }
 
 model Subscription {
-  id        String    @id @default(cuid())
-  userId    String    @unique
-  planType  String
-  active    Boolean   @default(true)
+  id        String             @id @default(cuid())
+  userId    String             @unique
+  planType  SubscriptionType   @default(week)
+  active    Boolean            @default(true)
+  status    SubscriptionStatus @default(pending)
   expiresAt DateTime?
   reference String
   provider  String
@@ -45,6 +58,11 @@ model Subscription {
   providerSubscriptionId String?
   providerCustomerId     String?
   providerAuthCode       String?
+
+  cardBrand String?
+  last4     String?
+  expMonth  Int?
+  expYear   Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -113,4 +131,15 @@ model QRScan {
   @@index([country])
   @@index([os])
   @@index([device])
+}
+
+model Plan {
+  id        String   @id @default(cuid())
+  type      String   @unique // week | month | year
+  amount    Int // kobo
+  currency  String // NGN
+  interval  String // week | month | year
+  isPopular Boolean  @default(false)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
 }

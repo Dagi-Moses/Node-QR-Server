@@ -17,7 +17,7 @@ router.post("/", async (req, res) => {
         headers: {
           Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
         },
-      }
+      },
     );
 
     const data = response.data.data;
@@ -31,6 +31,11 @@ router.post("/", async (req, res) => {
     const providerSubscriptionId = data.id || null;
     const providerCustomerId = data.customer?.id || null;
     const providerAuthCode = data.authorization?.authorization_code || null;
+
+    const cardBrand = data.authorization?.card_type || null;
+    const last4 = data.authorization?.last4 || null;
+    const expMonth = data.authorization?.exp_month || null;
+    const expYear = data.authorization?.exp_year || null;
 
     if (!userId || !planType) {
       return res.status(400).json({ error: "Missing metadata" });
@@ -64,6 +69,10 @@ router.post("/", async (req, res) => {
         providerSubscriptionId,
         providerCustomerId,
         providerAuthCode,
+        cardBrand,
+        last4,
+        expMonth,
+        expYear,
       },
       create: {
         userId,
@@ -75,6 +84,10 @@ router.post("/", async (req, res) => {
         providerSubscriptionId,
         providerCustomerId,
         providerAuthCode,
+        cardBrand,
+        last4,
+        expMonth,
+        expYear,
         profile: {
           connect: {
             userId: userId,
