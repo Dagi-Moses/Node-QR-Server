@@ -2,8 +2,62 @@
 import express from "express";
 import prisma from "../lib/prisma";
 import { ClerkExpressRequireAuth } from "@clerk/clerk-sdk-node";
+import { ProjectStatus } from "@prisma/client";
 
 const router = express.Router();
+
+// router.get(
+//   "/api/projects",
+//   ClerkExpressRequireAuth() as any,
+//   async (req: any, res) => {
+//     try {
+//       const userId = req.auth.userId;
+
+//       const projects = await prisma.project.findMany({
+//         where: { userId },
+//         orderBy: { createdAt: "desc" },
+//         select: {
+//           id: true,
+//           name: true,
+//           description: true,
+//           status: true,
+//           createdAt: true,
+
+//           _count: {
+//             select: {
+//               qrs: true,
+//             },
+//           },
+
+//           qrs: {
+//             select: {
+//               qrScans: {
+//                 select: { createdAt: true },
+//                 orderBy: { createdAt: "desc" },
+//                 take: 1,
+//               },
+//             },
+//           },
+//         },
+//       });
+
+//       const response = projects.map((p) => ({
+//         id: p.id,
+//         name: p.name,
+//         description: p.description,
+//         status: p.status,
+//         createdAt: p.createdAt,
+
+//         qrCount: p._count.qrs,
+//       }));
+
+//       res.json(response);
+//     } catch (err) {
+//       console.error("Fetch projects error:", err);
+//       res.status(500).json({ error: "Internal server error" });
+//     }
+//   },
+// );
 
 router.get(
   "/api/projects",
@@ -11,46 +65,64 @@ router.get(
   async (req: any, res) => {
     try {
       const userId = req.auth.userId;
+      console.log("page", req.query.page);
+      console.log("limit", req.query.limit);
+      const page = Number(req.query.page) || 1;
+      const limit = Number(req.query.limit) || 10;
+      const skip = (page - 1) * limit;
 
-      const projects = await prisma.project.findMany({
-        where: { userId },
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          status: true,
-          createdAt: true,
+      const search =
+        typeof req.query.search === "string" &&
+        req.query.search.trim().length > 0
+          ? req.query.search.trim()
+          : undefined;
 
-          _count: {
-            select: {
-              qrs: true,
-            },
+      // const status = req.query.status?.toString() || "";
+      const status = Object.values(ProjectStatus).includes(req.query.status)
+        ? req.query.status
+        : undefined;
+
+      const where: any = { userId };
+
+      if (status && status !== "all") where.status = status;
+      if (search) {
+        where.name = { contains: search };
+      }
+
+      const [projects, total] = await Promise.all([
+        prisma.project.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: limit,
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            status: true,
+            createdAt: true,
+            _count: { select: { qrs: true } },
           },
+        }),
+        prisma.project.count({ where }),
+      ]);
 
-          qrs: {
-            select: {
-              qrScans: {
-                select: { createdAt: true },
-                orderBy: { createdAt: "desc" },
-                take: 1,
-              },
-            },
-          },
+      res.json({
+        data: projects.map((p) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          status: p.status,
+          createdAt: p.createdAt,
+          qrCount: p._count.qrs,
+        })),
+        meta: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
         },
       });
-
-      const response = projects.map((p) => ({
-        id: p.id,
-        name: p.name,
-        description: p.description,
-        status: p.status,
-        createdAt: p.createdAt,
-
-        qrCount: p._count.qrs,
-      }));
-
-      res.json(response);
     } catch (err) {
       console.error("Fetch projects error:", err);
       res.status(500).json({ error: "Internal server error" });

@@ -16,7 +16,7 @@ export default function setupRoutes(app: any): void {
   app.use("/api/create-profile", createProfileRouter);
   app.use("/api/checkout", checkoutRouter);
   app.use("/api/subscription", subscriptionRouter);
-  app.use("/api/profile", profileRouter);
+  app.use("/", profileRouter);
   app.use("/", projectsRouter);
   app.use("/payments/verify", verifyPaymentRouter);
   app.use("/api", qrCodeRouter);

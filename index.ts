@@ -37,7 +37,6 @@ async function main() {
   console.log("Done.");
 }
 app.set("trust proxy", true);
-
 //main().catch((err) => console.error(err));
 
 app.listen(PORT, "0.0.0.0", () => {

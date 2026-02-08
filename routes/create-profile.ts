@@ -18,6 +18,10 @@ router.post(
 
       const user = await clerkClient.users.getUser(clerkUserId);
       const email = user.emailAddresses[0]?.emailAddress;
+      const name =
+        [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+        user.username ||
+        "user";
 
       if (!clerkUserId) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -39,6 +43,7 @@ router.post(
         data: {
           userId: clerkUserId,
           email,
+          name,
         },
       });
 

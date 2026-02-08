@@ -448,6 +448,7 @@ router.get(
       // ================= RESPONSE =================
 
       res.json({
+        qrName: qr.name,
         stats,
         scansData: scansByMonth,
         locations,
