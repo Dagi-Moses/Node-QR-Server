@@ -92,7 +92,7 @@ model Project {
 model QRCode {
   id        String   @id @default(cuid())
   projectId String
-  type      QRType
+  type      QRType   @default(url)
   name      String?
   payload   Json
   status    QRStatus @default(active)
