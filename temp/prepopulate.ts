@@ -1,9 +1,9 @@
-import { PrismaClient, ProjectStatus, QRStatus, QRType } from "@prisma/client";
+import {  ProjectStatus, QRStatus, QRType } from "@prisma/client";
 import { faker } from "@faker-js/faker";
 import prisma from "../lib/prisma.js";
 
 export async function seedDatabase() {
-  const userId = "user_37USnCYzSgF2Rs1c0XeRx1Xalau";
+  const userId = "user_39wM4SOaTJJyd0azXSQxiCDlayu";
 
   // reusable visitors to simulate returning users
   const visitors = Array.from({ length: 20 }).map(() => faker.string.uuid());

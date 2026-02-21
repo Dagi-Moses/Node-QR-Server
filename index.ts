@@ -1,9 +1,9 @@
 import "dotenv/config";
 import express from "express";
-import setupRoutes from "./middleware/routing.ts";
+import setupRoutes from "./middleware/routing.js";
 import cors from "cors";
 import bodyParser from "body-parser";
-import { seedDatabase } from "./temp/prepopulate";
+import { seedDatabase } from "./temp/prepopulate.js";
 
 const PORT = 4000;
 
@@ -37,7 +37,10 @@ async function main() {
   console.log("Done.");
 }
 app.set("trust proxy", true);
-// main().catch((err) => console.error(err));
+main().catch((err) => {
+  console.error("Error during initialization:", err);
+  process.exit(1);
+});
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log("Server running on port", PORT);
